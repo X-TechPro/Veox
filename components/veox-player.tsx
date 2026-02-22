@@ -101,6 +101,7 @@ export default function VeoxPlayer({
     "main" | "server" | "colors"
   >("main");
   const [activeSubtitle, setActiveSubtitle] = useState<string | null>(null);
+  const [expandedSubtitleGroup, setExpandedSubtitleGroup] = useState<string | null>(null);
   const [subtitleText, setSubtitleText] = useState("");
   const [currentSrc, setCurrentSrc] = useState(src);
   const [seekGhostPercent, setSeekGhostPercent] = useState<number | null>(null);
@@ -690,23 +691,24 @@ export default function VeoxPlayer({
     ...((qualities.subtitles || []) as SubtitleTrack[]),
   ];
 
-  const groupedSubtitles = useMemo(() => {
-    const counts: Record<string, number> = {};
+  const groupedSubtitles = useMemo<{
+    label: string;
+    subs: (SubtitleTrack & { label: string })[];
+  }[]>(() => {
+    const groups: Record<string, SubtitleTrack[]> = {};
     for (const sub of allSubtitles) {
       const key = sub.display || sub.language;
-      counts[key] = (counts[key] || 0) + 1;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(sub);
     }
-    // Track index per group
-    const indices: Record<string, number> = {};
-    return allSubtitles.map((sub) => {
-      const key = sub.display || sub.language;
-      if (!indices[key]) indices[key] = 0;
-      indices[key]++;
-      const hasDuplicates = counts[key] > 1;
-      const label = hasDuplicates
-        ? `${key} ${indices[key]}`
-        : key;
-      return { ...sub, label };
+    return Object.entries(groups).map(([key, subs]) => {
+      return {
+        label: key,
+        subs: subs.map((sub, i) => ({
+          ...sub,
+          label: subs.length > 1 ? `${key} ${i + 1}` : key,
+        }))
+      };
     });
   }, [allSubtitles]);
 
@@ -1096,7 +1098,7 @@ export default function VeoxPlayer({
         <div
           data-panel
           className="absolute bottom-20 right-4 md:right-6 z-50 w-64 max-h-72 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full bg-black/80 backdrop-blur-xl rounded-2xl border border-[#ffffff12] shadow-2xl"
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e: ReactMouseEvent<HTMLDivElement>) => e.stopPropagation()}
         >
           <div className="px-4 py-3 border-b border-[#ffffff12]">
             <h3 className="text-foreground text-sm font-sans font-semibold">
@@ -1113,17 +1115,50 @@ export default function VeoxPlayer({
             >
               Off
             </button>
-            {groupedSubtitles.map((sub, i) => (
-              <button
-                key={`${sub.url}-${i}`}
-                onClick={() => {
-                  setActiveSubtitle(sub.url);
-                  setShowSubPanel(false);
-                }}
-                className={`w-full text-left px-3 py-2 rounded-xl text-sm font-sans transition-colors ${activeSubtitle === sub.url ? "bg-primary/20 text-primary" : "text-foreground/80 hover:bg-[#ffffff10]"}`}
-              >
-                {sub.label}
-              </button>
+            {groupedSubtitles.map((group: { label: string; subs: (SubtitleTrack & { label: string })[] }, i: number) => (
+              <div key={group.label}>
+                {group.subs.length === 1 ? (
+                  <button
+                    onClick={() => {
+                      setActiveSubtitle(group.subs[0].url);
+                      setShowSubPanel(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-xl text-sm font-sans transition-colors ${activeSubtitle === group.subs[0].url ? "bg-primary/20 text-primary" : "text-foreground/80 hover:bg-[#ffffff10]"}`}
+                  >
+                    {group.label}
+                  </button>
+                ) : (
+                  <div>
+                    <button
+                      onClick={() => {
+                        setExpandedSubtitleGroup(expandedSubtitleGroup === group.label ? null : group.label);
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm font-sans text-foreground/80 hover:bg-[#ffffff10] transition-colors"
+                    >
+                      <span className={group.subs.some((s: SubtitleTrack & { label: string }) => s.url === activeSubtitle) ? "text-primary font-medium" : ""}>
+                        {group.label}
+                      </span>
+                      <ChevronRight size={16} strokeWidth={2.5} className={`transition-transform ${expandedSubtitleGroup === group.label ? "rotate-90" : ""}`} />
+                    </button>
+                    {expandedSubtitleGroup === group.label && (
+                      <div className="ml-2 pl-2 border-l border-[#ffffff12] mt-1 flex flex-col gap-1">
+                        {group.subs.map((sub: SubtitleTrack & { label: string }, j: number) => (
+                          <button
+                            key={`${sub.url}-${j}`}
+                            onClick={() => {
+                              setActiveSubtitle(sub.url);
+                              setShowSubPanel(false);
+                            }}
+                            className={`w-full text-left px-3 py-1.5 rounded-xl text-sm font-sans transition-colors ${activeSubtitle === sub.url ? "bg-primary/20 text-primary" : "text-foreground/80 hover:bg-[#ffffff10]"}`}
+                          >
+                            {sub.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         </div>
@@ -1134,7 +1169,7 @@ export default function VeoxPlayer({
         <div
           data-panel
           className="absolute bottom-20 right-4 md:right-6 z-50 w-72 max-h-96 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full bg-black/80 backdrop-blur-xl rounded-2xl border border-[#ffffff12] shadow-2xl"
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e: ReactMouseEvent<HTMLDivElement>) => e.stopPropagation()}
         >
           {settingsTab === "main" && (
             <>
