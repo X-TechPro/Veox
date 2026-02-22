@@ -221,7 +221,7 @@ export default function VeoxPlayer({
         video.play().catch(() => {
           video.muted = true;
           setMuted(true);
-          video.play().catch(() => {});
+          video.play().catch(() => { });
         });
       }
     };
@@ -333,7 +333,7 @@ export default function VeoxPlayer({
         case " ":
         case "k":
           e.preventDefault();
-          playing ? video.pause() : video.play().catch(() => {});
+          playing ? video.pause() : video.play().catch(() => { });
           resetHideTimer();
           break;
         case "ArrowRight":
@@ -387,9 +387,9 @@ export default function VeoxPlayer({
     const el = containerRef.current;
     if (!el) return;
     if (!document.fullscreenElement) {
-      el.requestFullscreen().catch(() => {});
+      el.requestFullscreen().catch(() => { });
     } else {
-      document.exitFullscreen().catch(() => {});
+      document.exitFullscreen().catch(() => { });
     }
   }, []);
 
@@ -403,7 +403,7 @@ export default function VeoxPlayer({
   const togglePlay = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
-    if (video.paused) video.play().catch(() => {});
+    if (video.paused) video.play().catch(() => { });
     else video.pause();
     resetHideTimer();
   }, [resetHideTimer]);
@@ -1095,7 +1095,7 @@ export default function VeoxPlayer({
       {showSubPanel && (
         <div
           data-panel
-          className="absolute bottom-20 right-4 md:right-6 z-50 w-64 max-h-72 overflow-y-auto bg-black/80 backdrop-blur-xl rounded-2xl border border-[#ffffff12] shadow-2xl"
+          className="absolute bottom-20 right-4 md:right-6 z-50 w-64 max-h-72 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full bg-black/80 backdrop-blur-xl rounded-2xl border border-[#ffffff12] shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="px-4 py-3 border-b border-[#ffffff12]">
@@ -1133,7 +1133,7 @@ export default function VeoxPlayer({
       {showSettingsPanel && (
         <div
           data-panel
-          className="absolute bottom-20 right-4 md:right-6 z-50 w-72 max-h-96 overflow-y-auto bg-black/80 backdrop-blur-xl rounded-2xl border border-[#ffffff12] shadow-2xl"
+          className="absolute bottom-20 right-4 md:right-6 z-50 w-72 max-h-96 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full bg-black/80 backdrop-blur-xl rounded-2xl border border-[#ffffff12] shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
           {settingsTab === "main" && (
