@@ -14,11 +14,18 @@ async function fetchSubtitles(
     if (!response.ok) return [];
     const subtitles = await response.json();
     return subtitles.map(
-      (sub: { url: string; language: string; display: string }) => ({
-        url: sub.url,
-        language: sub.language,
-        display: sub.display,
-      })
+      (sub: { url: string; language: string; display: string }) => {
+        let url = sub.url;
+        if (url.includes("sub.wyzie.ru") && !url.includes("format=")) {
+          const separator = url.includes("?") ? "&" : "?";
+          url += `${separator}format=ssa&encoding=UTF-8`;
+        }
+        return {
+          url,
+          language: sub.language,
+          display: sub.display,
+        };
+      }
     );
   } catch {
     return [];

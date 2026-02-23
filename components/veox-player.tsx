@@ -286,7 +286,12 @@ export default function VeoxPlayer({
       try {
         const res = await fetch(activeSubtitle);
         const text = await res.text();
-        parsedCues = parseVTT(text);
+        // Detect format
+        if (text.includes("[Script Info]") || text.includes("[V4+ Styles]") || text.includes("Dialogue:")) {
+          parsedCues = parseSSA(text);
+        } else {
+          parsedCues = parseVTT(text);
+        }
       } catch {
         // ignore
       }
@@ -1447,6 +1452,83 @@ function PreviewFrame({
   );
 }
 
+/* ─── SSA/ASS parser ─── */
+function parseSSA(text: string) {
+  const cues: { start: number; end: number; text: string }[] = [];
+  const lines = text.split(/\r?\n/);
+  let format: string[] = [];
+  let eventsSection = false;
+
+  for (let line of lines) {
+    line = line.trim();
+    if (!line) continue;
+
+    if (line.toLowerCase() === "[events]") {
+      eventsSection = true;
+      continue;
+    }
+
+    if (eventsSection) {
+      if (line.startsWith("[")) {
+        eventsSection = false;
+        continue;
+      }
+
+      if (line.startsWith("Format:")) {
+        format = line.replace("Format:", "").split(",").map((s) => s.trim());
+        continue;
+      }
+
+      if (line.startsWith("Dialogue:") || line.startsWith("Comment:")) {
+        const prefix = line.startsWith("Dialogue:") ? "Dialogue:" : "Comment:";
+        const rawData = line.substring(prefix.length).trim();
+
+        // SSA/ASS Dialogue lines have a fixed number of fields before the Text
+        const fields: string[] = [];
+        let currentPos = 0;
+        for (let i = 0; i < format.length - 1; i++) {
+          const nextComma = rawData.indexOf(",", currentPos);
+          if (nextComma === -1) break;
+          fields.push(rawData.substring(currentPos, nextComma).trim());
+          currentPos = nextComma + 1;
+        }
+        fields.push(rawData.substring(currentPos)); // The rest is the Text field
+
+        const entry: Record<string, string> = {};
+        format.forEach((key, i) => {
+          entry[key] = fields[i] || "";
+        });
+
+        const start = parseSSATime(entry["Start"]);
+        const end = parseSSATime(entry["End"]);
+        let content = entry["Text"] || "";
+
+        // Remove SSA tags like {\i1}, {\b1}, {\pos(x,y)}, etc.
+        content = content.replace(/\{[^}]+\}/g, "");
+        // Handle SSA specific line breaks
+        content = content.replace(/\\N/g, "\n").replace(/\\n/g, "\n").replace(/\\h/g, " ");
+
+        if (content.trim() && !isNaN(start) && !isNaN(end)) {
+          cues.push({ start, end, text: content.trim() });
+        }
+      }
+    }
+  }
+  return cues;
+}
+
+function parseSSATime(str: string) {
+  if (!str) return NaN;
+  const parts = str.split(":");
+  if (parts.length === 3) {
+    const h = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    const s = parseFloat(parts[2].replace(",", "."));
+    return h * 3600 + m * 60 + s;
+  }
+  return NaN;
+}
+
 /* ─── Simple VTT parser ─── */
 function parseVTT(text: string) {
   const cues: { start: number; end: number; text: string }[] = [];
@@ -1489,3 +1571,4 @@ function parseVTTTime(str: string) {
   }
   return 0;
 }
+
