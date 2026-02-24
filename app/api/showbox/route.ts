@@ -24,6 +24,7 @@ async function fetchSubtitles(
           url,
           language: sub.language,
           display: sub.display,
+          flagUrl: (sub as any).flagUrl,
         };
       }
     );
@@ -242,7 +243,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch subtitles from secondary source
-    let subtitles: { url: string; language: string; display: string }[] = [];
+    let subtitles: { url: string; language: string; display: string; flagUrl?: string }[] = [];
     try {
       let subUrl = `https://madplay.site/api/subtitle?id=${tmdb}`;
       if (type === 2) {

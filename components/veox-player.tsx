@@ -32,6 +32,7 @@ export interface SubtitleTrack {
   url: string;
   language: string;
   display: string;
+  flagUrl?: string;
 }
 
 export interface QualityItem {
@@ -698,6 +699,7 @@ export default function VeoxPlayer({
 
   const groupedSubtitles = useMemo<{
     label: string;
+    flagUrl?: string;
     subs: (SubtitleTrack & { label: string })[];
   }[]>(() => {
     const groups: Record<string, SubtitleTrack[]> = {};
@@ -709,6 +711,7 @@ export default function VeoxPlayer({
     return Object.entries(groups).map(([key, subs]) => {
       return {
         label: key,
+        flagUrl: subs[0].flagUrl,
         subs: subs.map((sub, i) => ({
           ...sub,
           label: subs.length > 1 ? `${key} ${i + 1}` : key,
@@ -1131,7 +1134,7 @@ export default function VeoxPlayer({
             >
               Off
             </button>
-            {groupedSubtitles.map((group: { label: string; subs: (SubtitleTrack & { label: string })[] }, i: number) => (
+            {groupedSubtitles.map((group, i: number) => (
               <div key={group.label}>
                 {group.subs.length === 1 ? (
                   <button
@@ -1141,7 +1144,17 @@ export default function VeoxPlayer({
                     }}
                     className={`w-full text-left px-3 py-2 rounded-xl text-sm font-sans transition-colors ${activeSubtitle === group.subs[0].url ? "bg-primary/20 text-primary" : "text-foreground/80 hover:bg-[#ffffff10]"}`}
                   >
-                    {group.label}
+                    <div className="flex items-center gap-2">
+                      {group.flagUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={group.flagUrl}
+                          alt=""
+                          className="w-4 h-3 object-cover rounded-sm"
+                        />
+                      )}
+                      <span>{group.label}</span>
+                    </div>
                   </button>
                 ) : (
                   <div>
@@ -1151,9 +1164,19 @@ export default function VeoxPlayer({
                       }}
                       className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm font-sans text-foreground/80 hover:bg-[#ffffff10] transition-colors"
                     >
-                      <span className={group.subs.some((s: SubtitleTrack & { label: string }) => s.url === activeSubtitle) ? "text-primary font-medium" : ""}>
-                        {group.label}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {group.flagUrl && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={group.flagUrl}
+                            alt=""
+                            className="w-4 h-3 object-cover rounded-sm"
+                          />
+                        )}
+                        <span className={group.subs.some((s: SubtitleTrack & { label: string }) => s.url === activeSubtitle) ? "text-primary font-medium" : ""}>
+                          {group.label}
+                        </span>
+                      </div>
                       <ChevronRight size={16} strokeWidth={2.5} className={`transition-transform ${expandedSubtitleGroup === group.label ? "rotate-90" : ""}`} />
                     </button>
                     {expandedSubtitleGroup === group.label && (
