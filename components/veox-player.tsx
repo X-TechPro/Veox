@@ -778,7 +778,7 @@ export default function VeoxPlayer({
 
       {/* Loading / Buffering spinner */}
       {isBuffering && (
-        <div className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none">
+        <div className="absolute inset-0 flex items-center justify-center z-40 pointer-events-none">
           <Loader2
             size={48}
             strokeWidth={2}
@@ -789,7 +789,7 @@ export default function VeoxPlayer({
 
       {/* Touch feedback */}
       {touchFeedback && (
-        <div className="absolute inset-0 flex items-center justify-center z-40 pointer-events-none">
+        <div className="absolute inset-0 flex items-center justify-center z-45 pointer-events-none">
           <div className="bg-black/70 backdrop-blur-md text-foreground text-lg font-sans font-semibold px-6 py-3 rounded-2xl">
             {touchFeedback}
           </div>
@@ -799,7 +799,7 @@ export default function VeoxPlayer({
       {/* Double tap seek feedback */}
       {seekFeedback && (
         <div
-          className={`absolute top-1/2 -translate-y-1/2 z-40 pointer-events-none ${seekFeedback.side === "left" ? "left-12" : "right-12"}`}
+          className={`absolute top-1/2 -translate-y-1/2 z-45 pointer-events-none ${seekFeedback.side === "left" ? "left-12" : "right-12"}`}
         >
           <div className="bg-black/60 backdrop-blur-md text-foreground text-base font-sans font-semibold px-5 py-2.5 rounded-2xl">
             {seekFeedback.text}
@@ -807,7 +807,7 @@ export default function VeoxPlayer({
         </div>
       )}
 
-      {/* Subtitles */}
+      {/* Subtitles - sandwiched between background and foreground of controls */}
       {subtitleText && (
         <div className="absolute bottom-24 left-0 right-0 flex justify-center z-30 pointer-events-none px-4">
           <div className="bg-black/60 backdrop-blur-sm text-foreground text-base md:text-lg font-sans font-medium px-5 py-2 rounded-xl max-w-[80%] text-center leading-relaxed">
@@ -816,17 +816,15 @@ export default function VeoxPlayer({
         </div>
       )}
 
-      {/* Controls overlay */}
+      {/* Controls: Background Layer (Gradients & Title) */}
       <div
-        data-controls
-        className="absolute inset-0 z-20 flex flex-col justify-end transition-opacity duration-300"
+        className="absolute inset-0 z-20 transition-opacity duration-300 pointer-events-none"
         style={{
           opacity: showControls || seeking ? 1 : 0,
-          pointerEvents: showControls || seeking ? "auto" : "none",
         }}
       >
         {/* Top gradient + title */}
-        <div className="absolute top-0 left-0 right-0 h-28 bg-gradient-to-b from-black/70 to-transparent pointer-events-none" />
+        <div className="absolute top-0 left-0 right-0 h-28 bg-gradient-to-b from-black/70 to-transparent" />
         {title && (
           <div className="absolute top-0 left-0 right-0 flex items-center px-5 pt-4 md:px-8 md:pt-6">
             <span className="text-foreground text-sm md:text-base font-sans font-semibold tracking-wide truncate">
@@ -836,8 +834,18 @@ export default function VeoxPlayer({
         )}
 
         {/* Bottom gradient */}
-        <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
+        <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-black/80 to-transparent" />
+      </div>
 
+      {/* Controls: Foreground Layer (Interactive Buttons & Seekbar) */}
+      <div
+        data-controls
+        className="absolute inset-0 z-35 flex flex-col justify-end transition-opacity duration-300"
+        style={{
+          opacity: showControls || seeking ? 1 : 0,
+          pointerEvents: showControls || seeking ? "auto" : "none",
+        }}
+      >
         {/* Bottom controls area */}
         <div className="relative px-4 pb-4 md:px-6 md:pb-5 flex flex-col gap-2.5">
           {/* Seekbar */}
@@ -1104,6 +1112,9 @@ export default function VeoxPlayer({
           data-panel
           className="absolute bottom-20 right-4 md:right-6 z-50 w-64 max-h-72 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full bg-black/80 backdrop-blur-xl rounded-2xl border border-[#ffffff12] shadow-2xl"
           onClick={(e: ReactMouseEvent<HTMLDivElement>) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
+          onTouchEnd={(e) => e.stopPropagation()}
         >
           <div className="px-4 py-3 border-b border-[#ffffff12]">
             <h3 className="text-foreground text-sm font-sans font-semibold">
@@ -1175,6 +1186,9 @@ export default function VeoxPlayer({
           data-panel
           className="absolute bottom-20 right-4 md:right-6 z-50 w-72 max-h-96 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full bg-black/80 backdrop-blur-xl rounded-2xl border border-[#ffffff12] shadow-2xl"
           onClick={(e: ReactMouseEvent<HTMLDivElement>) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
+          onTouchEnd={(e) => e.stopPropagation()}
         >
           {settingsTab === "main" && (
             <>
@@ -1346,6 +1360,27 @@ export default function VeoxPlayer({
                           };
                           document.addEventListener("mousemove", onMove);
                           document.addEventListener("mouseup", onUp);
+                        }}
+                        onTouchStart={(e) => {
+                          e.stopPropagation();
+                          const bar = e.currentTarget;
+                          const onTouchMove = (ev: globalThis.TouchEvent) => {
+                            const rect = bar.getBoundingClientRect();
+                            const touch = ev.touches[0];
+                            const x = Math.max(
+                              0,
+                              Math.min(touch.clientX - rect.left, rect.width)
+                            );
+                            s.set(
+                              Math.round(s.min + (x / rect.width) * range)
+                            );
+                          };
+                          const onTouchEnd = () => {
+                            document.removeEventListener("touchmove", onTouchMove);
+                            document.removeEventListener("touchend", onTouchEnd);
+                          };
+                          document.addEventListener("touchmove", onTouchMove);
+                          document.addEventListener("touchend", onTouchEnd);
                         }}
                       >
                         <div className="absolute left-0 right-0 h-1 group-hover/slider:h-1.5 rounded-full bg-[#ffffff1a] transition-all" />
