@@ -724,6 +724,16 @@ export default function VeoxPlayer({
   const bufferedPercent = duration ? (buffered / duration) * 100 : 0;
   const effectiveVolume = muted ? 0 : volume;
 
+  // Preload subtitle flags to prevent lag when opening the panel
+  useEffect(() => {
+    groupedSubtitles.forEach((group) => {
+      if (group.flagUrl) {
+        const img = new window.Image();
+        img.src = group.flagUrl;
+      }
+    });
+  }, [groupedSubtitles]);
+
   return (
     <div
       ref={containerRef}
@@ -1110,10 +1120,10 @@ export default function VeoxPlayer({
       </div>
 
       {/* ─── Subtitle Panel (with grouped duplicates) ─── */}
-      {showSubPanel && (
+      {groupedSubtitles.length > 0 && (
         <div
           data-panel
-          className="absolute bottom-20 right-4 md:right-6 z-50 w-64 max-h-72 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full bg-black/80 backdrop-blur-xl rounded-2xl border border-[#ffffff12] shadow-2xl"
+          className={`absolute bottom-20 right-4 md:right-6 z-50 w-64 max-h-72 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full bg-black/80 backdrop-blur-xl rounded-2xl border border-[#ffffff12] shadow-2xl transition-all duration-300 ${showSubPanel ? "opacity-100 translate-y-0 pointer-events-auto" : "opacity-0 translate-y-4 pointer-events-none"}`}
           onClick={(e: ReactMouseEvent<HTMLDivElement>) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
           onTouchMove={(e) => e.stopPropagation()}
@@ -1150,7 +1160,7 @@ export default function VeoxPlayer({
                         <img
                           src={group.flagUrl}
                           alt=""
-                          className="w-4 h-3 object-cover rounded-sm"
+                          className="w-4 h-3 object-cover rounded-[1px]"
                         />
                       )}
                       <span>{group.label}</span>
@@ -1170,7 +1180,7 @@ export default function VeoxPlayer({
                           <img
                             src={group.flagUrl}
                             alt=""
-                            className="w-4 h-3 object-cover rounded-sm"
+                            className="w-4 h-3 object-cover rounded-[1px]"
                           />
                         )}
                         <span className={group.subs.some((s: SubtitleTrack & { label: string }) => s.url === activeSubtitle) ? "text-primary font-medium" : ""}>
@@ -1204,237 +1214,235 @@ export default function VeoxPlayer({
       )}
 
       {/* ─── Settings Panel ─── */}
-      {showSettingsPanel && (
-        <div
-          data-panel
-          className="absolute bottom-20 right-4 md:right-6 z-50 w-72 max-h-96 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full bg-black/80 backdrop-blur-xl rounded-2xl border border-[#ffffff12] shadow-2xl"
-          onClick={(e: ReactMouseEvent<HTMLDivElement>) => e.stopPropagation()}
-          onTouchStart={(e) => e.stopPropagation()}
-          onTouchMove={(e) => e.stopPropagation()}
-          onTouchEnd={(e) => e.stopPropagation()}
-        >
-          {settingsTab === "main" && (
-            <>
-              <div className="px-4 py-3 border-b border-[#ffffff12]">
-                <h3 className="text-foreground text-sm font-sans font-semibold">
-                  Settings
-                </h3>
-              </div>
-              <div className="p-2">
-                {serverEntries.length > 0 && (
-                  <button
-                    onClick={() => setSettingsTab("server")}
-                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-sans text-foreground/90 hover:bg-[#ffffff10] transition-colors"
-                  >
-                    <span>Change Server</span>
-                    <ChevronRight size={16} strokeWidth={2.5} />
-                  </button>
-                )}
+      <div
+        data-panel
+        className={`absolute bottom-20 right-4 md:right-6 z-50 w-72 max-h-96 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full bg-black/80 backdrop-blur-xl rounded-2xl border border-[#ffffff12] shadow-2xl transition-all duration-300 ${showSettingsPanel ? "opacity-100 translate-y-0 pointer-events-auto" : "opacity-0 translate-y-4 pointer-events-none"}`}
+        onClick={(e: ReactMouseEvent<HTMLDivElement>) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
+        onTouchMove={(e) => e.stopPropagation()}
+        onTouchEnd={(e) => e.stopPropagation()}
+      >
+        {settingsTab === "main" && (
+          <>
+            <div className="px-4 py-3 border-b border-[#ffffff12]">
+              <h3 className="text-foreground text-sm font-sans font-semibold">
+                Settings
+              </h3>
+            </div>
+            <div className="p-2">
+              {serverEntries.length > 0 && (
                 <button
-                  onClick={() => setSettingsTab("colors")}
+                  onClick={() => setSettingsTab("server")}
                   className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-sans text-foreground/90 hover:bg-[#ffffff10] transition-colors"
                 >
-                  <span>Colors</span>
+                  <span>Change Server</span>
                   <ChevronRight size={16} strokeWidth={2.5} />
                 </button>
-              </div>
-            </>
-          )}
+              )}
+              <button
+                onClick={() => setSettingsTab("colors")}
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-sans text-foreground/90 hover:bg-[#ffffff10] transition-colors"
+              >
+                <span>Colors</span>
+                <ChevronRight size={16} strokeWidth={2.5} />
+              </button>
+            </div>
+          </>
+        )}
 
-          {settingsTab === "server" && (
-            <>
-              <div className="px-4 py-3 border-b border-[#ffffff12] flex items-center gap-2">
-                <button
-                  onClick={() => setSettingsTab("main")}
-                  className="text-foreground/70 hover:text-foreground transition-colors"
-                >
-                  <ChevronLeft size={18} strokeWidth={3} />
-                </button>
-                <h3 className="text-foreground text-sm font-sans font-semibold">
-                  Change Server
-                </h3>
-              </div>
-              <div className="p-2">
-                {serverEntries.map(([serverName, quals]) => (
-                  <div key={serverName} className="mb-2">
-                    <div className="px-3 py-1 text-[10px] font-mono font-semibold text-foreground/40 uppercase tracking-widest">
-                      {serverName}
-                    </div>
-                    {quals.map((q, i) => (
-                      <button
-                        key={`${serverName}-${i}`}
-                        onClick={() => {
-                          switchServer(q.link);
-                          setShowSettingsPanel(false);
-                        }}
-                        className={`w-full text-left px-3 py-2 rounded-xl text-sm font-sans transition-colors ${currentSrc === q.link ? "bg-primary/20 text-primary" : "text-foreground/80 hover:bg-[#ffffff10]"}`}
-                      >
-                        {q.quality}
-                      </button>
-                    ))}
+        {settingsTab === "server" && (
+          <>
+            <div className="px-4 py-3 border-b border-[#ffffff12] flex items-center gap-2">
+              <button
+                onClick={() => setSettingsTab("main")}
+                className="text-foreground/70 hover:text-foreground transition-colors"
+              >
+                <ChevronLeft size={18} strokeWidth={3} />
+              </button>
+              <h3 className="text-foreground text-sm font-sans font-semibold">
+                Change Server
+              </h3>
+            </div>
+            <div className="p-2">
+              {serverEntries.map(([serverName, quals]) => (
+                <div key={serverName} className="mb-2">
+                  <div className="px-3 py-1 text-[10px] font-mono font-semibold text-foreground/40 uppercase tracking-widest">
+                    {serverName}
                   </div>
-                ))}
-              </div>
-            </>
-          )}
-
-          {settingsTab === "colors" && (
-            <>
-              <div className="px-4 py-3 border-b border-[#ffffff12] flex items-center gap-2">
-                <button
-                  onClick={() => setSettingsTab("main")}
-                  className="text-foreground/70 hover:text-foreground transition-colors"
-                >
-                  <ChevronLeft size={18} strokeWidth={3} />
-                </button>
-                <h3 className="text-foreground text-sm font-sans font-semibold">
-                  Colors
-                </h3>
-              </div>
-              <div className="p-2">
-                {/* Presets */}
-                <div className="flex gap-2 px-2 mb-3">
-                  {COLOR_PRESETS.map((preset) => (
+                  {quals.map((q, i) => (
                     <button
-                      key={preset.name}
+                      key={`${serverName}-${i}`}
                       onClick={() => {
-                        setColorHue(preset.hue);
-                        setColorSaturation(preset.saturation);
-                        setColorHighlights(preset.highlights);
-                        setColorShadows(preset.shadows);
+                        switchServer(q.link);
+                        setShowSettingsPanel(false);
                       }}
-                      className="flex-1 px-2 py-1.5 rounded-xl text-xs font-sans font-medium bg-[#ffffff10] hover:bg-primary/20 hover:text-primary text-foreground/80 transition-colors text-center"
+                      className={`w-full text-left px-3 py-2 rounded-xl text-sm font-sans transition-colors ${currentSrc === q.link ? "bg-primary/20 text-primary" : "text-foreground/80 hover:bg-[#ffffff10]"}`}
                     >
-                      {preset.name}
+                      {q.quality}
                     </button>
                   ))}
                 </div>
+              ))}
+            </div>
+          </>
+        )}
 
-                {/* Sliders - styled like seekbar */}
-                {[
-                  {
-                    label: "Hue",
-                    value: colorHue,
-                    set: setColorHue,
-                    min: -180,
-                    max: 180,
-                  },
-                  {
-                    label: "Saturation",
-                    value: colorSaturation,
-                    set: setColorSaturation,
-                    min: 0,
-                    max: 200,
-                  },
-                  {
-                    label: "Highlights",
-                    value: colorHighlights,
-                    set: setColorHighlights,
-                    min: 50,
-                    max: 150,
-                  },
-                  {
-                    label: "Shadows",
-                    value: colorShadows,
-                    set: setColorShadows,
-                    min: 50,
-                    max: 150,
-                  },
-                ].map((s) => {
-                  const range = s.max - s.min;
-                  const pct = ((s.value - s.min) / range) * 100;
-                  return (
-                    <div key={s.label} className="px-3 mb-2.5">
-                      <div className="flex justify-between mb-1">
-                        <span className="text-xs font-sans text-foreground/60">
-                          {s.label}
-                        </span>
-                        <span className="text-xs font-mono text-foreground/40">
-                          {s.value}
-                        </span>
-                      </div>
-                      <div
-                        className="relative h-5 flex items-center cursor-pointer group/slider"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const rect = e.currentTarget.getBoundingClientRect();
+        {settingsTab === "colors" && (
+          <>
+            <div className="px-4 py-3 border-b border-[#ffffff12] flex items-center gap-2">
+              <button
+                onClick={() => setSettingsTab("main")}
+                className="text-foreground/70 hover:text-foreground transition-colors"
+              >
+                <ChevronLeft size={18} strokeWidth={3} />
+              </button>
+              <h3 className="text-foreground text-sm font-sans font-semibold">
+                Colors
+              </h3>
+            </div>
+            <div className="p-2">
+              {/* Presets */}
+              <div className="flex gap-2 px-2 mb-3">
+                {COLOR_PRESETS.map((preset) => (
+                  <button
+                    key={preset.name}
+                    onClick={() => {
+                      setColorHue(preset.hue);
+                      setColorSaturation(preset.saturation);
+                      setColorHighlights(preset.highlights);
+                      setColorShadows(preset.shadows);
+                    }}
+                    className="flex-1 px-2 py-1.5 rounded-xl text-xs font-sans font-medium bg-[#ffffff10] hover:bg-primary/20 hover:text-primary text-foreground/80 transition-colors text-center"
+                  >
+                    {preset.name}
+                  </button>
+                ))}
+              </div>
+
+              {/* Sliders - styled like seekbar */}
+              {[
+                {
+                  label: "Hue",
+                  value: colorHue,
+                  set: setColorHue,
+                  min: -180,
+                  max: 180,
+                },
+                {
+                  label: "Saturation",
+                  value: colorSaturation,
+                  set: setColorSaturation,
+                  min: 0,
+                  max: 200,
+                },
+                {
+                  label: "Highlights",
+                  value: colorHighlights,
+                  set: setColorHighlights,
+                  min: 50,
+                  max: 150,
+                },
+                {
+                  label: "Shadows",
+                  value: colorShadows,
+                  set: setColorShadows,
+                  min: 50,
+                  max: 150,
+                },
+              ].map((s) => {
+                const range = s.max - s.min;
+                const pct = ((s.value - s.min) / range) * 100;
+                return (
+                  <div key={s.label} className="px-3 mb-2.5">
+                    <div className="flex justify-between mb-1">
+                      <span className="text-xs font-sans text-foreground/60">
+                        {s.label}
+                      </span>
+                      <span className="text-xs font-mono text-foreground/40">
+                        {s.value}
+                      </span>
+                    </div>
+                    <div
+                      className="relative h-5 flex items-center cursor-pointer group/slider"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const x = Math.max(
+                          0,
+                          Math.min(e.clientX - rect.left, rect.width)
+                        );
+                        s.set(Math.round(s.min + (x / rect.width) * range));
+                      }}
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        const bar = e.currentTarget;
+                        const onMove = (ev: globalThis.MouseEvent) => {
+                          const rect = bar.getBoundingClientRect();
                           const x = Math.max(
                             0,
-                            Math.min(e.clientX - rect.left, rect.width)
+                            Math.min(ev.clientX - rect.left, rect.width)
                           );
-                          s.set(Math.round(s.min + (x / rect.width) * range));
-                        }}
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          const bar = e.currentTarget;
-                          const onMove = (ev: globalThis.MouseEvent) => {
-                            const rect = bar.getBoundingClientRect();
-                            const x = Math.max(
-                              0,
-                              Math.min(ev.clientX - rect.left, rect.width)
-                            );
-                            s.set(
-                              Math.round(s.min + (x / rect.width) * range)
-                            );
-                          };
-                          const onUp = () => {
-                            document.removeEventListener("mousemove", onMove);
-                            document.removeEventListener("mouseup", onUp);
-                          };
-                          document.addEventListener("mousemove", onMove);
-                          document.addEventListener("mouseup", onUp);
-                        }}
-                        onTouchStart={(e) => {
-                          e.stopPropagation();
-                          const bar = e.currentTarget;
-                          const onTouchMove = (ev: globalThis.TouchEvent) => {
-                            const rect = bar.getBoundingClientRect();
-                            const touch = ev.touches[0];
-                            const x = Math.max(
-                              0,
-                              Math.min(touch.clientX - rect.left, rect.width)
-                            );
-                            s.set(
-                              Math.round(s.min + (x / rect.width) * range)
-                            );
-                          };
-                          const onTouchEnd = () => {
-                            document.removeEventListener("touchmove", onTouchMove);
-                            document.removeEventListener("touchend", onTouchEnd);
-                          };
-                          document.addEventListener("touchmove", onTouchMove);
-                          document.addEventListener("touchend", onTouchEnd);
-                        }}
-                      >
-                        <div className="absolute left-0 right-0 h-1 group-hover/slider:h-1.5 rounded-full bg-[#ffffff1a] transition-all" />
-                        <div
-                          className="absolute left-0 h-1 group-hover/slider:h-1.5 rounded-full bg-primary transition-all"
-                          style={{ width: `${pct}%` }}
-                        />
-                        <div
-                          className="absolute w-2.5 h-2.5 rounded-full bg-primary shadow-lg shadow-primary/30 -translate-x-1/2 opacity-0 group-hover/slider:opacity-100 transition-opacity"
-                          style={{ left: `${pct}%` }}
-                        />
-                      </div>
+                          s.set(
+                            Math.round(s.min + (x / rect.width) * range)
+                          );
+                        };
+                        const onUp = () => {
+                          document.removeEventListener("mousemove", onMove);
+                          document.removeEventListener("mouseup", onUp);
+                        };
+                        document.addEventListener("mousemove", onMove);
+                        document.addEventListener("mouseup", onUp);
+                      }}
+                      onTouchStart={(e) => {
+                        e.stopPropagation();
+                        const bar = e.currentTarget;
+                        const onTouchMove = (ev: globalThis.TouchEvent) => {
+                          const rect = bar.getBoundingClientRect();
+                          const touch = ev.touches[0];
+                          const x = Math.max(
+                            0,
+                            Math.min(touch.clientX - rect.left, rect.width)
+                          );
+                          s.set(
+                            Math.round(s.min + (x / rect.width) * range)
+                          );
+                        };
+                        const onTouchEnd = () => {
+                          document.removeEventListener("touchmove", onTouchMove);
+                          document.removeEventListener("touchend", onTouchEnd);
+                        };
+                        document.addEventListener("touchmove", onTouchMove);
+                        document.addEventListener("touchend", onTouchEnd);
+                      }}
+                    >
+                      <div className="absolute left-0 right-0 h-1 group-hover/slider:h-1.5 rounded-full bg-[#ffffff1a] transition-all" />
+                      <div
+                        className="absolute left-0 h-1 group-hover/slider:h-1.5 rounded-full bg-primary transition-all"
+                        style={{ width: `${pct}%` }}
+                      />
+                      <div
+                        className="absolute w-2.5 h-2.5 rounded-full bg-primary shadow-lg shadow-primary/30 -translate-x-1/2 opacity-0 group-hover/slider:opacity-100 transition-opacity"
+                        style={{ left: `${pct}%` }}
+                      />
                     </div>
-                  );
-                })}
-                <button
-                  onClick={() => {
-                    setColorHue(0);
-                    setColorSaturation(100);
-                    setColorHighlights(100);
-                    setColorShadows(100);
-                  }}
-                  className="w-full px-3 py-2 rounded-xl text-xs font-sans text-foreground/60 hover:text-foreground hover:bg-[#ffffff10] transition-colors"
-                >
-                  Reset to Default
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      )}
+                  </div>
+                );
+              })}
+              <button
+                onClick={() => {
+                  setColorHue(0);
+                  setColorSaturation(100);
+                  setColorHighlights(100);
+                  setColorShadows(100);
+                }}
+                className="w-full px-3 py-2 rounded-xl text-xs font-sans text-foreground/60 hover:text-foreground hover:bg-[#ffffff10] transition-colors"
+              >
+                Reset to Default
+              </button>
+            </div>
+          </>
+        )}
+      </div>
 
       {/* Veox watermark */}
       <div className="absolute top-4 right-5 z-10 pointer-events-none opacity-30">
