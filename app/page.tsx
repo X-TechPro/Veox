@@ -126,6 +126,10 @@ export default function HomePage() {
               <code className="text-primary text-xs font-mono bg-primary/10 px-2 py-0.5 rounded-lg shrink-0">GET</code>
               <code className="text-foreground/80 text-xs font-mono break-all">{'/showbox?tmdb={tmdb_id}&api={api_key}'}</code>
             </div>
+            <div className="flex items-start gap-3">
+              <code className="text-primary text-xs font-mono bg-primary/10 px-2 py-0.5 rounded-lg shrink-0">GET</code>
+              <code className="text-foreground/80 text-xs font-mono break-all">{'/showbox?tmdb={tmdb_id}&type=2&s={season}&e={episode}&api={api_key}'}</code>
+            </div>
           </div>
         </div>
       </div>

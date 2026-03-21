@@ -257,6 +257,32 @@ export async function GET(request: NextRequest) {
       // ignore
     }
 
+    const android = searchParams.get("android") === "true";
+    if (android) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const allLinks: any[] = [];
+      Object.keys(qualitiesPerServer).forEach((server) => {
+        if (server === "subtitles") return;
+        const arr = qualitiesPerServer[server];
+        if (Array.isArray(arr)) {
+          arr.forEach((q: any) => {
+            allLinks.push({ ...q, server });
+          });
+        }
+      });
+      const allSubtitles = [
+        ...(Array.isArray(qualitiesPerServer.subtitles)
+          ? qualitiesPerServer.subtitles
+          : []),
+        ...subtitles,
+      ];
+      return NextResponse.json({
+        title,
+        links: allLinks,
+        subtitles: allSubtitles,
+      });
+    }
+
     return NextResponse.json({
       title,
       defaultLink,
