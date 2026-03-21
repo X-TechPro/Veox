@@ -9,9 +9,10 @@ import VeoxPlayer, {
 
 interface ShowboxData {
   title: string;
-  defaultLink: string | null;
-  qualities: Record<string, QualityItem[] | SubtitleTrack[]>;
+  defaultLink?: string | null;
+  qualities?: Record<string, QualityItem[] | SubtitleTrack[]>;
   subtitles: SubtitleTrack[];
+  links?: (QualityItem & { server: string })[];
 }
 
 function ShowboxContent() {
@@ -21,10 +22,26 @@ function ShowboxContent() {
   const season = searchParams.get("s") || searchParams.get("season") || "";
   const episode = searchParams.get("e") || searchParams.get("episode") || "";
   const api = searchParams.get("api") || "";
+  const android = searchParams.get("android") === "true";
 
   const [data, setData] = useState<ShowboxData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const params = new URLSearchParams();
+  if (tmdb) params.set("tmdb", tmdb);
+  if (type) params.set("type", type);
+  if (season) params.set("s", season);
+  if (episode) params.set("e", episode);
+  if (api) params.set("api", api);
+  if (android) params.set("android", "true");
+
+  if (android) {
+    if (typeof window !== "undefined") {
+      window.location.href = `/api/showbox?${params.toString()}`;
+    }
+    return null;
+  }
 
   useEffect(() => {
     if (!tmdb) {
@@ -32,13 +49,6 @@ function ShowboxContent() {
       setLoading(false);
       return;
     }
-
-    const params = new URLSearchParams();
-    params.set("tmdb", tmdb);
-    if (type) params.set("type", type);
-    if (season) params.set("s", season);
-    if (episode) params.set("e", episode);
-    if (api) params.set("api", api);
 
     let cancelled = false;
 
@@ -104,7 +114,9 @@ function ShowboxContent() {
     );
   }
 
-  if (!data || !data.defaultLink) {
+  if (!data) return null;
+
+  if (!data.defaultLink) {
     return (
       <div className="w-screen h-screen bg-background flex items-center justify-center">
         <div className="text-center">
