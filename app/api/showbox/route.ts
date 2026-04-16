@@ -203,10 +203,14 @@ export async function GET(request: NextRequest) {
     // Fetch subtitles from Wyzie
     let subtitles: any[] = [];
     try {
-      const s = type === 2 ? (searchParams.get("s") || searchParams.get("season") || 1) : 0;
-      const e = type === 2 ? (searchParams.get("e") || searchParams.get("episode") || 1) : 0;
-      // Wyzie Search API
-      const subUrl = `https://sub.wyzie.io/search?id=${tmdb}&season=${s}&episode=${e}&key=wyzie-c69aa3331b319bc85629e700f24fae7a`;
+      // Base search URL
+      let subUrl = `https://sub.wyzie.io/search?id=${tmdb}&key=wyzie-c69aa3331b319bc85629e700f24fae7a`;
+      if (type === 2) {
+        const s = searchParams.get("s") || searchParams.get("season") || 1;
+        const e = searchParams.get("e") || searchParams.get("episode") || 1;
+        subUrl += `&season=${s}&episode=${e}`;
+      }
+      
       const subRes = await fetch(subUrl);
       if (subRes.ok) {
         const rawSubs = await subRes.json();
