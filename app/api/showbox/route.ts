@@ -9,16 +9,20 @@ async function fetchSubtitles(
   episode?: number
 ) {
   try {
-    const url = `https://sub.wyzie.ru/search?id=${tmdbId}&season=${season || 0}&episode=${episode || 0}&key=wyzie-c69aa3331b319bc85629e700f24fae7a`;
+    const url = `https://sub.wyzie.io/search?id=${tmdbId}&season=${season || 0}&episode=${episode || 0}&key=wyzie-c69aa3331b319bc85629e700f24fae7a`;
     const response = await fetch(url);
     if (!response.ok) return [];
     const subtitles = await response.json();
     return subtitles.map(
       (sub: { url: string; language: string; display: string; flagUrl?: string }) => {
         let url = sub.url;
-        if (url.includes("sub.wyzie.ru") && !url.includes("format=")) {
-          const separator = url.includes("?") ? "&" : "?";
-          url += `${separator}format=ssa&encoding=UTF-8`;
+        if (url.includes("sub.wyzie")) {
+          if (url.includes("format=srt")) {
+            url = url.replace("format=srt", "format=ssa");
+          } else if (!url.includes("format=")) {
+            const separator = url.includes("?") ? "&" : "?";
+            url += `${separator}format=ssa&encoding=UTF-8`;
+          }
         }
         return {
           url,
