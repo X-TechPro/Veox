@@ -9,12 +9,12 @@ async function fetchSubtitles(
   episode?: number
 ) {
   try {
-    const url = `https://sub.wyzie.ru/search?id=${tmdbId}&season=${season || 0}&episode=${episode || 0}`;
+    const url = `https://sub.wyzie.ru/search?id=${tmdbId}&season=${season || 0}&episode=${episode || 0}&key=wyzie-c69aa3331b319bc85629e700f24fae7a`;
     const response = await fetch(url);
     if (!response.ok) return [];
     const subtitles = await response.json();
     return subtitles.map(
-      (sub: { url: string; language: string; display: string }) => {
+      (sub: { url: string; language: string; display: string; flagUrl?: string }) => {
         let url = sub.url;
         if (url.includes("sub.wyzie.ru") && !url.includes("format=")) {
           const separator = url.includes("?") ? "&" : "?";
@@ -24,7 +24,7 @@ async function fetchSubtitles(
           url,
           language: sub.language,
           display: sub.display,
-          flagUrl: (sub as any).flagUrl,
+          flagUrl: sub.flagUrl,
         };
       }
     );
@@ -71,7 +71,6 @@ function constructShowboxLink(
   return `https://showbox-five.vercel.app/api/scrape?title=${safeTitle}&year=${year}&rt=${runtime || 0}&type=${type}${apiParam}&tmdbId=${tmdb_id}`;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function hasAnyLink(obj: any): boolean {
   if (!obj || typeof obj !== "object") return false;
   for (const k of Object.keys(obj)) {
@@ -103,7 +102,7 @@ async function fetchShowboxJson(
         const json = await res.json();
         if (!requireLink || hasAnyLink(json)) return json;
       } catch {
-        // not JSON
+        // failed to parse or empty
       }
     }
   } catch {
@@ -164,7 +163,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const qualitiesPerServer: Record<string, any> = {};
     let defaultLink: string | null = null;
 
@@ -172,94 +170,75 @@ export async function GET(request: NextRequest) {
       const s = Number(searchParams.get("s") || searchParams.get("season") || 1);
       const e = Number(searchParams.get("e") || searchParams.get("episode") || 1);
       const seasons = Array.isArray(json.seasons) ? json.seasons : [];
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const seasonObj = seasons.find((sea: any) => Number(sea.season_number) === s) || seasons[0];
       const eps = seasonObj && Array.isArray(seasonObj.episodes) ? seasonObj.episodes : [];
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      
       const parseEpisodeNum = (val: any) => {
         if (val == null) return null;
         if (typeof val === "number") return val;
         const m = String(val).match(/e(\d+)/i);
         return m ? Number(m[1]) : Number(val);
       };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const episodeObj = eps.find((ep: any) => parseEpisodeNum(ep.episode) === e) || eps[0];
       const links = episodeObj && Array.isArray(episodeObj.links) ? episodeObj.links : [];
       const server = "showbox";
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      qualitiesPerServer[server] = links.filter((item: any) => item && item.link).map((item: any) => ({ quality: item.quality, link: item.link }));
+      
+      qualitiesPerServer[server] = links
+        .filter((item: any) => item && item.link)
+        .map((item: any) => ({ quality: item.quality, link: item.link }));
+      
       if (qualitiesPerServer[server].length === 0) delete qualitiesPerServer[server];
-      const subs = await fetchSubtitles(tmdb, s, e);
-
-      const findDefault = () => {
-        const list = qualitiesPerServer[server] || [];
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let f = list.find((q: any) => String(q.quality).toUpperCase() === "ORG");
-        if (f && f.link) return f.link;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        f = list.find((q: any) => String(q.quality).toUpperCase().includes("1080"));
-        if (f && f.link) return f.link;
-        return list.length ? list[0].link : null;
-      };
-      defaultLink = findDefault();
-      if (subs.length > 0) qualitiesPerServer.subtitles = subs;
     } else {
       Object.keys(json).forEach((server) => {
         const arr = Array.isArray(json[server]) ? json[server] : [];
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        qualitiesPerServer[server] = arr.filter((item: any) => item && item.link).map((item: any) => ({ quality: item.quality, link: item.link }));
-        if (qualitiesPerServer[server].length === 0)
-          delete qualitiesPerServer[server];
+        qualitiesPerServer[server] = arr
+          .filter((item: any) => item && item.link)
+          .map((item: any) => ({ quality: item.quality, link: item.link }));
+        
+        if (qualitiesPerServer[server].length === 0) delete qualitiesPerServer[server];
       });
+    }
 
-      for (const server of Object.keys(qualitiesPerServer)) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const found = qualitiesPerServer[server].find((q: any) => String(q.quality).toUpperCase() === "ORG");
-        if (found && found.link) {
+    // Determine default link
+    const servers = Object.keys(qualitiesPerServer);
+    // Priority 1: ORG
+    for (const srv of servers) {
+      const found = qualitiesPerServer[srv].find((q: any) => String(q.quality).toUpperCase() === "ORG");
+      if (found?.link) {
+        defaultLink = found.link;
+        break;
+      }
+    }
+    // Priority 2: 1080p
+    if (!defaultLink) {
+      for (const srv of servers) {
+        const found = qualitiesPerServer[srv].find((q: any) => String(q.quality).toUpperCase().includes("1080"));
+        if (found?.link) {
           defaultLink = found.link;
           break;
         }
       }
-      if (!defaultLink) {
-        for (const server of Object.keys(qualitiesPerServer)) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const found = qualitiesPerServer[server].find((q: any) => String(q.quality).toUpperCase().includes("1080"));
-          if (found && found.link) {
-            defaultLink = found.link;
-            break;
-          }
-        }
-      }
-      if (!defaultLink) {
-        outer: for (const server of Object.keys(qualitiesPerServer)) {
-          for (const q of qualitiesPerServer[server]) {
-            if (q.link) {
-              defaultLink = q.link;
-              break outer;
-            }
-          }
+    }
+    // Priority 3: First available
+    if (!defaultLink) {
+      for (const srv of servers) {
+        if (qualitiesPerServer[srv].length > 0) {
+          defaultLink = qualitiesPerServer[srv][0].link;
+          break;
         }
       }
     }
 
-    // Fetch subtitles from secondary source
-    let subtitles: { url: string; language: string; display: string; flagUrl?: string }[] = [];
-    try {
-      let subUrl = `https://madplay.site/api/subtitle?id=${tmdb}`;
-      if (type === 2) {
-        const s = searchParams.get("s") || searchParams.get("season") || 1;
-        const e = searchParams.get("e") || searchParams.get("episode") || 1;
-        subUrl = `https://madplay.site/api/subtitle?id=${tmdb}&season=${s}&episode=${e}`;
-      }
-      const subRes = await fetch(subUrl);
-      if (subRes.ok) subtitles = await subRes.json();
-    } catch {
-      // ignore
+    const season = type === 2 ? Number(searchParams.get("s") || searchParams.get("season") || 1) : undefined;
+    const episode = type === 2 ? Number(searchParams.get("e") || searchParams.get("episode") || 1) : undefined;
+    const subtitles = await fetchSubtitles(tmdb, season, episode);
+
+    if (subtitles.length > 0) {
+      qualitiesPerServer.subtitles = subtitles;
     }
 
-    const android = searchParams.get("android") === "true";
-    if (android) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (searchParams.get("android") === "true") {
       const allLinks: any[] = [];
       Object.keys(qualitiesPerServer).forEach((server) => {
         if (server === "subtitles") return;
@@ -270,16 +249,10 @@ export async function GET(request: NextRequest) {
           });
         }
       });
-      const allSubtitles = [
-        ...(Array.isArray(qualitiesPerServer.subtitles)
-          ? qualitiesPerServer.subtitles
-          : []),
-        ...subtitles,
-      ];
       return NextResponse.json({
         title,
         links: allLinks,
-        subtitles: allSubtitles,
+        subtitles,
       });
     }
 
@@ -290,7 +263,7 @@ export async function GET(request: NextRequest) {
       subtitles,
     });
   } catch (e) {
-    const err = e as Error & { status?: number; body?: string };
+    const err = e as Error & { status?: number };
     return NextResponse.json(
       { error: err.message || "Unknown error" },
       { status: err.status || 500 }
