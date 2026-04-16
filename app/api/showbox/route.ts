@@ -3,40 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 const TMDB_API_TOKEN =
   "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI2ZWFjNjM1ODA4YmRjMDJkZjI2ZDMwMjk0MGI0Y2EzNyIsIm5iZiI6MTc0ODY4NTIxNy43Mjg5OTk5LCJzdWIiOiI2ODNhZDFhMTkyMWI4N2IxYzk1Mzc4ODQiLCJzY29wZXMiOlsiYXBpX3JlYWQiXSwidmVyc2lvbiI6MX0.w-oWdRIxwlXKTpP42Yo87Mld5sqp8uNFpDHgrqB6a3U";
 
-async function fetchSubtitles(
-  tmdbId: string,
-  season?: number,
-  episode?: number
-) {
-  try {
-    const url = `https://sub.wyzie.io/search?id=${tmdbId}&season=${season || 0}&episode=${episode || 0}&key=wyzie-c69aa3331b319bc85629e700f24fae7a`;
-    const response = await fetch(url);
-    if (!response.ok) return [];
-    const subtitles = await response.json();
-    return subtitles.map(
-      (sub: { url: string; language: string; display: string; flagUrl?: string }) => {
-        let url = sub.url;
-        if (url.includes("sub.wyzie")) {
-          if (url.includes("format=srt")) {
-            url = url.replace("format=srt", "format=ssa");
-          } else if (!url.includes("format=")) {
-            const separator = url.includes("?") ? "&" : "?";
-            url += `${separator}format=ssa&encoding=UTF-8`;
-          }
-        }
-        return {
-          url,
-          language: sub.language,
-          display: sub.display,
-          flagUrl: sub.flagUrl,
-        };
-      }
-    );
-  } catch {
-    return [];
-  }
-}
-
 async function getMovieData(tmdb_id: string) {
   const url = `https://api.themoviedb.org/3/movie/${tmdb_id}?language=en-US`;
   const res = await fetch(url, {
@@ -106,7 +72,7 @@ async function fetchShowboxJson(
         const json = await res.json();
         if (!requireLink || hasAnyLink(json)) return json;
       } catch {
-        // failed to parse or empty
+        // failed to parse
       }
     }
   } catch {
@@ -234,9 +200,40 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const season = type === 2 ? Number(searchParams.get("s") || searchParams.get("season") || 1) : undefined;
-    const episode = type === 2 ? Number(searchParams.get("e") || searchParams.get("episode") || 1) : undefined;
-    const subtitles = await fetchSubtitles(tmdb, season, episode);
+    // Fetch subtitles from Wyzie
+    let subtitles: any[] = [];
+    try {
+      const s = type === 2 ? (searchParams.get("s") || searchParams.get("season") || 1) : 0;
+      const e = type === 2 ? (searchParams.get("e") || searchParams.get("episode") || 1) : 0;
+      // Wyzie Search API
+      const subUrl = `https://sub.wyzie.io/search?id=${tmdb}&season=${s}&episode=${e}&key=wyzie-c69aa3331b319bc85629e700f24fae7a`;
+      const subRes = await fetch(subUrl);
+      if (subRes.ok) {
+        const rawSubs = await subRes.json();
+        if (Array.isArray(rawSubs)) {
+          subtitles = rawSubs.map((sub: any) => {
+            let url = sub.url || "";
+            // Ensure SSA format for the player
+            if (url.includes("sub.wyzie")) {
+              if (url.includes("format=srt")) {
+                url = url.replace("format=srt", "format=ssa");
+              } else if (!url.includes("format=")) {
+                const sep = url.includes("?") ? "&" : "?";
+                url += `${sep}format=ssa&encoding=UTF-8`;
+              }
+            }
+            return {
+              url,
+              language: sub.language || "Unknown",
+              display: sub.display || sub.language || "Subtitle",
+              flagUrl: sub.flagUrl,
+            };
+          });
+        }
+      }
+    } catch {
+      // ignore
+    }
 
     if (subtitles.length > 0) {
       qualitiesPerServer.subtitles = subtitles;
