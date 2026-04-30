@@ -172,25 +172,47 @@ export async function GET(request: NextRequest) {
 
     // Determine default link
     const servers = Object.keys(qualitiesPerServer);
-    // Priority 1: ORG
+
+    // Priority 1: 1080p
     for (const srv of servers) {
-      const found = qualitiesPerServer[srv].find((q: any) => String(q.quality).toUpperCase() === "ORG");
+      const found = qualitiesPerServer[srv].find((q: any) => String(q.quality).toUpperCase().includes("1080"));
       if (found?.link) {
         defaultLink = found.link;
         break;
       }
     }
-    // Priority 2: 1080p
+
+    // Priority 2: Fallback to any lower quality (highest available below 1080)
+    if (!defaultLink) {
+      let bestLower: { val: number; link: string } | null = null;
+      for (const srv of servers) {
+        for (const item of qualitiesPerServer[srv]) {
+          const match = String(item.quality).match(/\d+/);
+          if (match) {
+            const val = parseInt(match[0]);
+            if (val < 1080) {
+              if (!bestLower || val > bestLower.val) {
+                bestLower = { val, link: item.link };
+              }
+            }
+          }
+        }
+      }
+      if (bestLower) defaultLink = bestLower.link;
+    }
+
+    // Priority 3: Fallback to ORG
     if (!defaultLink) {
       for (const srv of servers) {
-        const found = qualitiesPerServer[srv].find((q: any) => String(q.quality).toUpperCase().includes("1080"));
+        const found = qualitiesPerServer[srv].find((q: any) => String(q.quality).toUpperCase() === "ORG");
         if (found?.link) {
           defaultLink = found.link;
           break;
         }
       }
     }
-    // Priority 3: First available
+
+    // Priority 4: Final fallback (first available link)
     if (!defaultLink) {
       for (const srv of servers) {
         if (qualitiesPerServer[srv].length > 0) {
