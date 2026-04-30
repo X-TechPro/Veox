@@ -112,6 +112,8 @@ export default function VeoxPlayer({
   const [audioTracks, setAudioTracks] = useState<any[]>([]);
   const [currentAudioTrack, setCurrentAudioTrack] = useState<number>(-1);
   const [showAudioPanel, setShowAudioPanel] = useState(false);
+  const [fallbackHlsLink, setFallbackHlsLink] = useState<string | null>(null);
+  const pendingAudioTrackRef = useRef<number>(-1);
 
   /* Buffering / loading spinner */
   const [isBuffering, setIsBuffering] = useState(true);
@@ -166,7 +168,13 @@ export default function VeoxPlayer({
           setCurrentAudioTrack(hls.audioTrack);
         };
 
-        hls.on(Hls.Events.MANIFEST_PARSED, updateTracks);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          updateTracks();
+          if (pendingAudioTrackRef.current !== -1) {
+            hls.audioTrack = pendingAudioTrackRef.current;
+            pendingAudioTrackRef.current = -1;
+          }
+        });
         hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, updateTracks);
         hls.on(Hls.Events.AUDIO_TRACK_SWITCHED, updateTracks);
 
@@ -222,6 +230,44 @@ export default function VeoxPlayer({
       if (previewHlsRef.current) previewHlsRef.current.destroy();
     };
   }, [currentSrc, loadSource, loadPreviewSource]);
++
++  /* Background HLS parsing for non-HLS sources (like MKV) */
++  useEffect(() => {
++    const isCurrentHls = currentSrc.includes(".m3u8") || currentSrc.includes("m3u8");
++    if (isCurrentHls) {
++      setFallbackHlsLink(null);
++      return;
++    }
++
++    // Find any HLS quality in any server
++    let foundHls = null;
++    for (const server of Object.values(qualities)) {
++      if (Array.isArray(server)) {
++        const hlsQuality = server.find((q: any) => q.link && (q.link.includes(".m3u8") || q.link.includes("m3u8")));
++        if (hlsQuality) {
++          foundHls = hlsQuality.link;
++          break;
++        }
++      }
++    }
++
++    if (foundHls) {
++      setFallbackHlsLink(foundHls);
++      if (Hls.isSupported()) {
++        const tempHls = new Hls();
++        tempHls.loadSource(foundHls);
++        tempHls.on(Hls.Events.MANIFEST_PARSED, () => {
++          setAudioTracks([...tempHls.audioTracks]);
++          tempHls.destroy();
++        });
++        // Safety cleanup if it hangs
++        setTimeout(() => tempHls.destroy(), 10000);
++      }
++    } else {
++      setFallbackHlsLink(null);
++      setAudioTracks([]);
++    }
++  }, [currentSrc, qualities]);
 
   /* ─── Autoplay + restore time on server switch ─── */
   useEffect(() => {
@@ -1272,6 +1318,15 @@ export default function VeoxPlayer({
                   if (hlsRef.current) {
                     hlsRef.current.audioTrack = i;
                     setCurrentAudioTrack(i);
+                    setShowAudioPanel(false);
+                  } else if (fallbackHlsLink) {
+                    // Switch from MKV to HLS to support multiple audio tracks
+                    if (videoRef.current) {
+                      savedTimeRef.current = videoRef.current.currentTime;
+                    }
+                    isSwitchingRef.current = true;
+                    pendingAudioTrackRef.current = i;
+                    setCurrentSrc(fallbackHlsLink);
                     setShowAudioPanel(false);
                   }
                 }}
