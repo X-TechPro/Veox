@@ -159,18 +159,19 @@ export default function VeoxPlayer({
           maxBufferLength: 30,
           maxMaxBufferLength: 60,
         });
-        hls.loadSource(url);
-        hls.attachMedia(video);
         hlsRef.current = hls;
 
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          setAudioTracks(hls.audioTracks);
+        const updateTracks = () => {
+          setAudioTracks([...hls.audioTracks]);
           setCurrentAudioTrack(hls.audioTrack);
-        });
+        };
 
-        hls.on(Hls.Events.AUDIO_TRACK_SWITCHED, () => {
-          setCurrentAudioTrack(hls.audioTrack);
-        });
+        hls.on(Hls.Events.MANIFEST_PARSED, updateTracks);
+        hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, updateTracks);
+        hls.on(Hls.Events.AUDIO_TRACK_SWITCHED, updateTracks);
+
+        hls.loadSource(url);
+        hls.attachMedia(video);
       } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
         video.src = url;
       }
@@ -1081,9 +1082,9 @@ export default function VeoxPlayer({
 
             {/* Spacer */}
             <div className="flex-1" />
-            
+
             {/* Audio Tracks */}
-            {audioTracks.length > 1 && (
+            {(audioTracks.length > 0 || (hlsRef.current && hlsRef.current.audioTracks.length > 0)) && (
               <div className="relative">
                 <button
                   onClick={(e) => {
@@ -1092,7 +1093,7 @@ export default function VeoxPlayer({
                     setShowSubPanel(false);
                     setShowSettingsPanel(false);
                   }}
-                  className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${currentAudioTrack !== -1 ? "bg-primary/20 text-primary" : "text-foreground hover:bg-[#ffffff20]"}`}
+                  className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${showAudioPanel ? "bg-primary/20 text-primary" : "text-foreground hover:bg-[#ffffff20]"}`}
                   aria-label="Audio Tracks"
                 >
                   <Headphones size={20} strokeWidth={2.5} />
@@ -1101,7 +1102,7 @@ export default function VeoxPlayer({
             )}
 
             {/* Subtitles */}
-            {groupedSubtitles.length > 0 && (
+            {(groupedSubtitles.length > 0) && (
               <div className="relative">
                 <button
                   onClick={(e) => {
@@ -1249,7 +1250,7 @@ export default function VeoxPlayer({
       )}
 
       {/* ─── Audio Track Panel ─── */}
-      {audioTracks.length > 1 && (
+      {(audioTracks.length > 0 || (hlsRef.current && hlsRef.current.audioTracks.length > 0)) && (
         <div
           data-panel
           className={`absolute bottom-20 right-4 md:right-6 z-50 w-64 max-h-72 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full bg-black/80 backdrop-blur-xl rounded-2xl border border-[#ffffff12] shadow-2xl transition-all duration-300 ${showAudioPanel ? "opacity-100 translate-y-0 pointer-events-auto" : "opacity-0 translate-y-4 pointer-events-none"}`}
