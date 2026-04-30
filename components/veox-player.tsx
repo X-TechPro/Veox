@@ -21,6 +21,7 @@ import {
   Maximize,
   Minimize,
   Captions,
+  Headphones,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -107,6 +108,11 @@ export default function VeoxPlayer({
   const [currentSrc, setCurrentSrc] = useState(src);
   const [seekGhostPercent, setSeekGhostPercent] = useState<number | null>(null);
 
+  /* Audio Track State */
+  const [audioTracks, setAudioTracks] = useState<any[]>([]);
+  const [currentAudioTrack, setCurrentAudioTrack] = useState<number>(-1);
+  const [showAudioPanel, setShowAudioPanel] = useState(false);
+
   /* Buffering / loading spinner */
   const [isBuffering, setIsBuffering] = useState(true);
 
@@ -156,6 +162,15 @@ export default function VeoxPlayer({
         hls.loadSource(url);
         hls.attachMedia(video);
         hlsRef.current = hls;
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          setAudioTracks(hls.audioTracks);
+          setCurrentAudioTrack(hls.audioTrack);
+        });
+
+        hls.on(Hls.Events.AUDIO_TRACK_SWITCHED, () => {
+          setCurrentAudioTrack(hls.audioTrack);
+        });
       } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
         video.src = url;
       }
@@ -1066,6 +1081,24 @@ export default function VeoxPlayer({
 
             {/* Spacer */}
             <div className="flex-1" />
+            
+            {/* Audio Tracks */}
+            {audioTracks.length > 1 && (
+              <div className="relative">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowAudioPanel((v) => !v);
+                    setShowSubPanel(false);
+                    setShowSettingsPanel(false);
+                  }}
+                  className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${currentAudioTrack !== -1 ? "bg-primary/20 text-primary" : "text-foreground hover:bg-[#ffffff20]"}`}
+                  aria-label="Audio Tracks"
+                >
+                  <Headphones size={20} strokeWidth={2.5} />
+                </button>
+              </div>
+            )}
 
             {/* Subtitles */}
             {groupedSubtitles.length > 0 && (
@@ -1074,6 +1107,7 @@ export default function VeoxPlayer({
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowSubPanel((v) => !v);
+                    setShowAudioPanel(false);
                     setShowSettingsPanel(false);
                   }}
                   className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${activeSubtitle ? "bg-primary/20 text-primary" : "text-foreground hover:bg-[#ffffff20]"}`}
@@ -1091,6 +1125,7 @@ export default function VeoxPlayer({
                   e.stopPropagation();
                   setShowSettingsPanel((v) => !v);
                   setShowSubPanel(false);
+                  setShowAudioPanel(false);
                   setSettingsTab("main");
                 }}
                 className="w-9 h-9 flex items-center justify-center rounded-full text-foreground hover:bg-[#ffffff20] transition-colors"
@@ -1208,6 +1243,46 @@ export default function VeoxPlayer({
                   </div>
                 )}
               </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ─── Audio Track Panel ─── */}
+      {audioTracks.length > 1 && (
+        <div
+          data-panel
+          className={`absolute bottom-20 right-4 md:right-6 z-50 w-64 max-h-72 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 hover:[&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full bg-black/80 backdrop-blur-xl rounded-2xl border border-[#ffffff12] shadow-2xl transition-all duration-300 ${showAudioPanel ? "opacity-100 translate-y-0 pointer-events-auto" : "opacity-0 translate-y-4 pointer-events-none"}`}
+          onClick={(e: ReactMouseEvent<HTMLDivElement>) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
+          onTouchEnd={(e) => e.stopPropagation()}
+        >
+          <div className="px-4 py-3 border-b border-[#ffffff12]">
+            <h3 className="text-foreground text-sm font-sans font-semibold">
+              Audio Tracks
+            </h3>
+          </div>
+          <div className="p-2">
+            {audioTracks.map((track, i) => (
+              <button
+                key={i}
+                onClick={() => {
+                  if (hlsRef.current) {
+                    hlsRef.current.audioTrack = i;
+                    setCurrentAudioTrack(i);
+                    setShowAudioPanel(false);
+                  }
+                }}
+                className={`w-full text-left px-3 py-2 rounded-xl text-sm font-sans transition-colors ${currentAudioTrack === i ? "bg-primary/20 text-primary" : "text-foreground/80 hover:bg-[#ffffff10]"}`}
+              >
+                <div className="flex items-center justify-between">
+                  <span>{track.name || `Track ${i + 1}`}</span>
+                  {currentAudioTrack === i && (
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                  )}
+                </div>
+              </button>
             ))}
           </div>
         </div>
