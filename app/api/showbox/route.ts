@@ -38,7 +38,7 @@ function constructShowboxLink(
   const year = release_date ? String(release_date).split("-")[0] : "";
   const safeTitle = encodeURIComponent(title || "");
   const apiParam = api ? `&api=${encodeURIComponent(api)}` : "";
-  return `https://showbox-five.vercel.app/api/scrape?title=${safeTitle}&year=${year}&rt=${runtime || 0}&type=${type}&api=${apiParam}`;
+  return `https://showbox-five.vercel.app/api/scrape?title=${safeTitle}&year=${year}&rt=${runtime || 0}&type=${type}${apiParam}`;
 }
 
 function hasAnyLink(obj: any): boolean {
