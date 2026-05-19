@@ -38,7 +38,7 @@ function constructShowboxLink(
   const year = release_date ? String(release_date).split("-")[0] : "";
   const safeTitle = encodeURIComponent(title || "");
   const apiParam = api ? `&api=${encodeURIComponent(api)}` : "";
-  return `https://showbox-five.vercel.app/api/scrape?title=${safeTitle}&year=${year}&rt=${runtime || 0}&type=${type}${apiParam}&tmdbId=${tmdb_id}`;
+  return `https://showbox-five.vercel.app/api/scrape?title=${safeTitle}&year=${year}&rt=${runtime || 0}&type=${type}&api=${apiParam}`;
 }
 
 function hasAnyLink(obj: any): boolean {
@@ -142,7 +142,7 @@ export async function GET(request: NextRequest) {
       const seasons = Array.isArray(json.seasons) ? json.seasons : [];
       const seasonObj = seasons.find((sea: any) => Number(sea.season_number) === s) || seasons[0];
       const eps = seasonObj && Array.isArray(seasonObj.episodes) ? seasonObj.episodes : [];
-      
+
       const parseEpisodeNum = (val: any) => {
         if (val == null) return null;
         if (typeof val === "number") return val;
@@ -153,11 +153,11 @@ export async function GET(request: NextRequest) {
       const episodeObj = eps.find((ep: any) => parseEpisodeNum(ep.episode) === e) || eps[0];
       const links = episodeObj && Array.isArray(episodeObj.links) ? episodeObj.links : [];
       const server = "showbox";
-      
+
       qualitiesPerServer[server] = links
         .filter((item: any) => item && item.link)
         .map((item: any) => ({ quality: item.quality, link: item.link }));
-      
+
       if (qualitiesPerServer[server].length === 0) delete qualitiesPerServer[server];
     } else {
       Object.keys(json).forEach((server) => {
@@ -165,7 +165,7 @@ export async function GET(request: NextRequest) {
         qualitiesPerServer[server] = arr
           .filter((item: any) => item && item.link)
           .map((item: any) => ({ quality: item.quality, link: item.link }));
-        
+
         if (qualitiesPerServer[server].length === 0) delete qualitiesPerServer[server];
       });
     }
@@ -232,7 +232,7 @@ export async function GET(request: NextRequest) {
         const e = searchParams.get("e") || searchParams.get("episode") || 1;
         subUrl += `&season=${s}&episode=${e}`;
       }
-      
+
       const subRes = await fetch(subUrl);
       if (subRes.ok) {
         const rawSubs = await subRes.json();
