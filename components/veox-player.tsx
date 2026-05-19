@@ -230,44 +230,44 @@ export default function VeoxPlayer({
       if (previewHlsRef.current) previewHlsRef.current.destroy();
     };
   }, [currentSrc, loadSource, loadPreviewSource]);
-+
-+  /* Background HLS parsing for non-HLS sources (like MKV) */
-+  useEffect(() => {
-+    const isCurrentHls = currentSrc.includes(".m3u8") || currentSrc.includes("m3u8");
-+    if (isCurrentHls) {
-+      setFallbackHlsLink(null);
-+      return;
-+    }
-+
-+    // Find any HLS quality in any server
-+    let foundHls = null;
-+    for (const server of Object.values(qualities)) {
-+      if (Array.isArray(server)) {
-+        const hlsQuality = server.find((q: any) => q.link && (q.link.includes(".m3u8") || q.link.includes("m3u8")));
-+        if (hlsQuality) {
-+          foundHls = hlsQuality.link;
-+          break;
-+        }
-+      }
-+    }
-+
-+    if (foundHls) {
-+      setFallbackHlsLink(foundHls);
-+      if (Hls.isSupported()) {
-+        const tempHls = new Hls();
-+        tempHls.loadSource(foundHls);
-+        tempHls.on(Hls.Events.MANIFEST_PARSED, () => {
-+          setAudioTracks([...tempHls.audioTracks]);
-+          tempHls.destroy();
-+        });
-+        // Safety cleanup if it hangs
-+        setTimeout(() => tempHls.destroy(), 10000);
-+      }
-+    } else {
-+      setFallbackHlsLink(null);
-+      setAudioTracks([]);
-+    }
-+  }, [currentSrc, qualities]);
+
+  /* Background HLS parsing for non-HLS sources (like MKV) */
+  useEffect(() => {
+    const isCurrentHls = currentSrc.includes(".m3u8") || currentSrc.includes("m3u8");
+    if (isCurrentHls) {
+      setFallbackHlsLink(null);
+      return;
+    }
+
+    // Find any HLS quality in any server
+    let foundHls = null;
+    for (const server of Object.values(qualities)) {
+      if (Array.isArray(server)) {
+        const hlsQuality = server.find((q: any) => q.link && (q.link.includes(".m3u8") || q.link.includes("m3u8")));
+        if (hlsQuality) {
+          foundHls = hlsQuality.link;
+          break;
+        }
+      }
+    }
+
+    if (foundHls) {
+      setFallbackHlsLink(foundHls);
+      if (Hls.isSupported()) {
+        const tempHls = new Hls();
+        tempHls.loadSource(foundHls);
+        tempHls.on(Hls.Events.MANIFEST_PARSED, () => {
+          setAudioTracks([...tempHls.audioTracks]);
+          tempHls.destroy();
+        });
+        // Safety cleanup if it hangs
+        setTimeout(() => tempHls.destroy(), 10000);
+      }
+    } else {
+      setFallbackHlsLink(null);
+      setAudioTracks([]);
+    }
+  }, [currentSrc, qualities]);
 
   /* ─── Autoplay + restore time on server switch ─── */
   useEffect(() => {
